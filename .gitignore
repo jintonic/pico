@@ -1,10 +1,12 @@
+.vscode
+build
 # Prerequisites
-*.d
+*.duu
 
 # Object files
 *.o
 *.ko
-*.obj
+*.obj:Windows
 *.elf
 
 # Linker output
