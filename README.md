@@ -1,2 +1,1 @@
-# picodaq
-DAQ with Pi Pico
+Radiation Detection with Raspberry Pi Pico
