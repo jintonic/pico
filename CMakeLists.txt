@@ -15,9 +15,9 @@ if(WIN32)
 else()
     set(USERHOME $ENV{HOME})
 endif()
-set(sdkVersion 2.1.1)
+set(sdkVersion 2.2.0)
 set(toolchainVersion 14_2_Rel1)
-set(picotoolVersion 2.1.1)
+set(picotoolVersion 2.2.0)
 set(picoVscode ${USERHOME}/.pico-sdk/cmake/pico-vscode.cmake)
 if (EXISTS ${picoVscode})
     include(${picoVscode})
@@ -28,22 +28,22 @@ set(PICO_BOARD pico CACHE STRING "Board type")
 # Pull in Raspberry Pi Pico SDK (must be before project)
 include(pico_sdk_import.cmake)
 
-project(daq C CXX ASM)
+project(firmware C CXX ASM)
 
 # Initialise the Raspberry Pi Pico SDK
 pico_sdk_init()
 
 # Add executable. Default name is the project name, version 0.1
 
-add_executable(daq daq.c)
+add_executable(firmware firmware.c)
 
-target_link_libraries(daq
+target_link_libraries(firmware
 		pico_stdlib
 		hardware_adc
 		hardware_dma
 		)
 
 # create map/bin/hex file etc.
-pico_add_extra_outputs(daq)
+pico_add_extra_outputs(firmware)
 
 # add url via pico_set_program_url
