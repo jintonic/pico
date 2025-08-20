@@ -23,11 +23,13 @@ For those who want to modify the source code, please
 
 ## Firmware Functionality
 
-### Blicking LED on Pi Pico
+### Blinking LED on Pi Pico
 
 ### Driving an External Buzzer
 
 ### Saving Data in a Micro SD Card
+
+<https://github.com/carlk3/no-OS-FatFS-SD-SDIO-SPI-RPi-Pico>
 
 ### Displaying Data on an OLED
 
