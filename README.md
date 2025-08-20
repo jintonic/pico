@@ -12,10 +12,13 @@ For most users, simply download `firmware.uf2` from <https://github.com/jintonic
 For those who want to modify the source code, please
 
 1. [install] "Pi Pico C/C++ SDK" through Visual Studio Code and its "Raspberry Pi Pico" extension.
-2. download this repository from <https://github.com/jintonic/pico>.
-3. go to "Raspberry Pi Pico Project" tab in the left sidebar in VS Code, select "Import Project", and import the downloaded project. A folder called `.vscode` and a file `pico_sdk_import.cmake` will be created in the source code folder.
+2. download this repository from <https://github.com/jintonic/pico>
+```sh
+git clone --recurse-submodules --depth 1 https://github.com/jintonic/pico
+```
+3. go to "Raspberry Pi Pico Project" tab in the left sidebar in VS Code, select "Import Project", and import the downloaded project. Select `Pico` as a Kit if asked. A folder called `.vscode` and a file `pico_sdk_import.cmake` will be created in the source code folder.
 4. modify code as you like.
-5. click "Compile Project" in the sidebar. If the project compiles, one can find `firmware.uf2` in the `build` sub-folder.
+5. click "Compile Project" in the sidebar. Select `firmware` if you are asked to `Select a launch target for pico`. If the project compiles, one can find `firmware.uf2` in the `build` sub-folder.
 6. click "Run Project" in the sidebar to flash the uf2 file to Pi Pico, or do it manually.
 
 [install]: https://datasheets.raspberrypi.com/pico/getting-started-with-pico.pdf
@@ -57,5 +60,7 @@ target_link_libraries(ssd1306_i2c INTERFACE pico_stdlib hardware_i2c)
 ```
 
 The idea comes from <https://github.com/carlk3/no-OS-FatFS-SD-SPI-RPi-Pico/blob/master/FatFs_SPI/CMakeLists.txt>.
+
+The OLED is from <https://goldenmorninglcd.com/oled-display-module/0.96-inch-128x64-ssd1306-gme12864-11>
 
 ### Digitizing Waveform from Detector
