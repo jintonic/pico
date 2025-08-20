@@ -1,5 +1,8 @@
 [submodule "SDCard"]
 	path = SDCard
 	url = https://github.com/carlk3/no-OS-FatFS-SD-SPI-RPi-Pico
-[submodule ".SDCard"]
+	shallow = true
+[submodule "OLED"]
+	path = OLED
+	url = https://github.com/daschr/pico-ssd1306
 	shallow = true
