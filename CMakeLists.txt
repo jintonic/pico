@@ -1,5 +1,3 @@
-# Generated Cmake Pico project file
-
 cmake_minimum_required(VERSION 3.13)
 
 set(CMAKE_C_STANDARD 11)
@@ -8,7 +6,6 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 # Initialise pico_sdk from installed location
 # (note this can come from environment, CMake cache etc)
-
 # == DO NOT EDIT THE FOLLOWING LINES for the Raspberry Pi Pico VS Code Extension to work ==
 if(WIN32)
     set(USERHOME $ENV{USERPROFILE})
@@ -23,9 +20,11 @@ if (EXISTS ${picoVscode})
     include(${picoVscode})
 endif()
 # ====================================================================================
+# change pico to pico2 if needed
 set(PICO_BOARD pico CACHE STRING "Board type")
 
 # Pull in Raspberry Pi Pico SDK (must be before project)
+# pico_sdk_import.cmake is created using "Import Project" in Raspberry Pi Pico extension
 include(pico_sdk_import.cmake)
 
 project(firmware C CXX ASM)
@@ -34,16 +33,17 @@ project(firmware C CXX ASM)
 pico_sdk_init()
 
 # Add executable. Default name is the project name, version 0.1
-
 add_executable(firmware firmware.c)
 
+# Tell CMake where to find SDCard library
+add_subdirectory(SDCard/FatFs_SPI build)
+
 target_link_libraries(firmware
-		pico_stdlib
-		hardware_adc
-		hardware_dma
-		)
+	pico_stdlib
+	hardware_adc
+	hardware_dma
+	FatFs_SPI
+)
 
 # create map/bin/hex file etc.
 pico_add_extra_outputs(firmware)
-
-# add url via pico_set_program_url
