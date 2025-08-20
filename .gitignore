@@ -1,5 +1,7 @@
 .vscode
 build
+pico_sdk_import.cmake
+
 # Prerequisites
 *.duu
 
