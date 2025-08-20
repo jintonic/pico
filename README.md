@@ -1,4 +1,4 @@
-Firmware for Radiation Detection with Raspberry Pi Pico, which can
+Raspberry Pi Pico firmware for radiation detection. It provides the following functionalities.
 
 * digitize waveform data from a radiation detector
 * blink the LED on Pi Pico board when radiation is detected
@@ -28,9 +28,33 @@ For those who want to modify the source code, please
 ### Driving an External Buzzer
 
 ### Saving Data in a Micro SD Card
+A slightly older library <https://github.com/carlk3/no-OS-FatFS-SD-SPI-RPi-Pico> is used instead of <https://github.com/carlk3/no-OS-FatFS-SD-SDIO-SPI-RPi-Pico> to communicate with an SD card, because the latter offers way too much for this simple project. The library is added as a submodule in the folder [SDCard](SDCard).
 
-<https://github.com/carlk3/no-OS-FatFS-SD-SDIO-SPI-RPi-Pico>
+```sh
+git submodule add --depth 1 https://github.com/carlk3/no-OS-FatFS-SD-SPI-RPi-Pico SDCard
+git config -f .gitmodules submodule.SDCard.shallow true
+git commit -am 'added SD card lib'
+```
 
 ### Displaying Data on an OLED
+<https://github.com/daschr/pico-ssd1306> is used to communicate with an OLED. The code is added as a submodule in the folder [OLED](OLED).
+
+```sh
+git submodule add --depth 1 https://github.com/daschr/pico-ssd1306 OLED
+git config -f .gitmodules submodule.OLED.shallow true
+git commit -am 'added OLED lib'
+```
+
+The following lines of code is added to [CMakeFiles.txt](CMakeFiles.txt) to use pico-ssd1306 as a library:
+
+```cmake
+# Add ssd1306 library
+add_library(ssd1306_i2c INTERFACE)
+target_sources(ssd1306_i2c INTERFACE OLED/ssd1306.c)
+target_include_directories(ssd1306_i2c INTERFACE OLED)
+target_link_libraries(ssd1306_i2c INTERFACE pico_stdlib hardware_i2c)
+```
+
+The idea comes from <https://github.com/carlk3/no-OS-FatFS-SD-SPI-RPi-Pico/blob/master/FatFs_SPI/CMakeLists.txt>.
 
 ### Digitizing Waveform from Detector

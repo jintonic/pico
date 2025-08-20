@@ -35,14 +35,22 @@ pico_sdk_init()
 # Add executable. Default name is the project name, version 0.1
 add_executable(firmware firmware.c)
 
-# Tell CMake where to find SDCard library
+# Tell CMake where to find SD card library
 add_subdirectory(SDCard/FatFs_SPI build)
+
+# Add ssd1306 library
+add_library(ssd1306_i2c INTERFACE)
+target_sources(ssd1306_i2c INTERFACE OLED/ssd1306.c)
+target_include_directories(ssd1306_i2c INTERFACE OLED)
+target_link_libraries(ssd1306_i2c INTERFACE pico_stdlib hardware_i2c)
 
 target_link_libraries(firmware
 	pico_stdlib
 	hardware_adc
 	hardware_dma
+	hardware_i2c
 	FatFs_SPI
+	ssd1306_i2c
 )
 
 # create map/bin/hex file etc.
