@@ -1,7 +1,7 @@
 // Waveform digitization using Pi's ADC and DMA
 #include <pico/stdlib.h>
 #define n 16 // FIXME: the code only record 7 or 8 waveform samples currently
-uint8_t waveform[n] = {0}, max, i;
+uint8_t waveform[n] = {0}, max, i, j;
 uint8_t *pointer2wf = &waveform[0];
 
 #include <hardware/adc.h>
@@ -115,35 +115,42 @@ int main()
 
     ssd1306_t oled;
     oled_init(&oled);
-    char words[20];
+    char words[20] = "Welcome!";
+    ssd1306_draw_string(&oled, 8, 24, 2, words); ssd1306_show(&oled);
 
     sd_card_init();
-    if (f_printf(&file, "Hello, world!\n") < 0) printf("f_printf failed\n");
+    if (f_printf(&file, "Hello, world!\n") < 0) sprintf(words, "f_printf failed\n");
+    else sprintf(words, "Data logging started\n");
+    ssd1306_clear(&oled);
+    ssd1306_draw_string(&oled, 8, 24, 2, words); ssd1306_show(&oled);
 
-    while (true) {
-        if (gpio_get(22)==0) continue;
-        adc_run(false); // stop ADC temporarily to avoid overwriting waveform
+    for (i=0; i<5000; i++) {
+        if (gpio_get(22) == 0) continue;
+        adc_run(false);    // stop ADC temporarily to avoid overwriting waveform
         gpio_put(0, true); // turn on buzzer
         gpio_put(PICO_DEFAULT_LED_PIN, true);
 
         max = 0;
-        for (i = 0; i < n; i++)
-            if (waveform[i] > max) max = waveform[i];
+        for (j = 0; j < n; j++)
+            if (waveform[j] > max) max = waveform[j];
         printf("%hhu\n", max);
 
         sprintf(words, "%hhu\n", max);
         ssd1306_clear(&oled);
-        ssd1306_draw_string(&oled, 8, 24, 2, words);
-        ssd1306_show(&oled);
+        ssd1306_draw_string(&oled, 8, 24, 2, words); ssd1306_show(&oled);
 
-        adc_run(true); // restart ADC after waveform analysis
-        gpio_put(0, false); // turn off buzzer
+        adc_run(true);                         // restart ADC after waveform analysis
+        gpio_put(0, false);                    // turn off buzzer
         gpio_put(PICO_DEFAULT_LED_PIN, false); // turn off LED
     }
 
     FRESULT fr = f_close(&file);
-    if (fr != FR_OK) printf("f_close error: %s (%d)\n", FRESULT_str(fr), fr);
+    if (fr != FR_OK) sprintf(words, "f_close error: %s (%d)\n", FRESULT_str(fr), fr);
+    ssd1306_clear(&oled);
+    ssd1306_draw_string(&oled, 8, 24, 2, words); ssd1306_show(&oled);
     f_unmount(sd_cards[0].pcName);
+    ssd1306_clear(&oled);
+    ssd1306_draw_string(&oled, 8, 24, 2, "DAQ stopped"); ssd1306_show(&oled);
 
     return 0;
 }
