@@ -1,4 +1,3 @@
-// Waveform digitization using Pi's ADC and DMA
 #include <pico/stdlib.h>
 #define n 16 // FIXME: the code only record 7 or 8 waveform samples currently
 uint8_t waveform[n] = {0}, max, i, j;
@@ -6,7 +5,7 @@ uint8_t *pointer2wf = &waveform[0];
 
 #include <hardware/adc.h>
 #include <hardware/dma.h>
-void daq_init()
+void daq_init() // Waveform digitization using Pi's ADC and DMA
 {
     adc_init();
     adc_gpio_init(26);   // initialize GP26 as ADC input (ADC0)
@@ -44,10 +43,22 @@ void daq_init()
                           1, false);
 }
 
-// SPI connection to an SD card
+#include <ssd1306.h>
+ssd1306_t oled; // OLED display
+void oled_init()
+{
+    i2c_init(i2c0, 400000);
+    gpio_set_function(16, GPIO_FUNC_I2C);
+    gpio_pull_up(16);
+    gpio_set_function(17, GPIO_FUNC_I2C);
+    gpio_pull_up(17);
+    oled.external_vcc = false;                // despite OLED is powered by Pico
+    ssd1306_init(&oled, 128, 64, 0x3C, i2c0); // must be after previous line
+}
+
 #include <hw_config.h>
-static spi_t spis[] = {{
-    .hw_inst = spi0,
+static spi_t spis[] = {{ // SPI connections to SD cards
+    .hw_inst = spi1,
     .miso_gpio = 12, // GPIO number (not pin number)
     .mosi_gpio = 15,
     .sck_gpio = 14,
@@ -62,15 +73,20 @@ static sd_card_t sd_cards[] = {{
 size_t sd_get_num() { return count_of(sd_cards); }
 sd_card_t *sd_get_by_num(size_t num)
 {
-    if (num <= sd_get_num()) return &sd_cards[num];
-    else return NULL;
+    if (num <= sd_get_num())
+        return &sd_cards[num];
+    else
+        return NULL;
 }
 size_t spi_get_num() { return count_of(spis); }
 spi_t *spi_get_by_num(size_t num)
 {
-    if (num <= sd_get_num()) return &spis[num];
-    else return NULL;
+    if (num <= sd_get_num())
+        return &spis[num];
+    else
+        return NULL;
 }
+
 FIL file; // Global file object for writing to SD card
 #include <rtc.h>
 #include <f_util.h>
@@ -78,21 +94,12 @@ void sd_card_init()
 {
     time_init(); // Initialize time for FatFs
     FRESULT fr = f_mount(&(sd_cards[0].fatfs), sd_cards[0].pcName, 1);
-    if (fr != FR_OK) panic("f_mount error: %s (%d)\n", FRESULT_str(fr), fr);
+    if (fr != FR_OK)
+        panic("f_mount error: %s (%d)\n", FRESULT_str(fr), fr);
     const char *const filename = "data.txt";
     fr = f_open(&file, filename, FA_OPEN_APPEND | FA_WRITE);
     if (fr != FR_OK && fr != FR_EXIST)
         panic("f_open(%s) error: %s (%d)\n", filename, FRESULT_str(fr), fr);
-}
- 
-// OLED display
-#include <ssd1306.h>
-void oled_init(ssd1306_t *display)
-{
-    i2c_init(i2c0, 400000);
-    gpio_set_function(16, GPIO_FUNC_I2C); gpio_pull_up(16);
-    gpio_set_function(17, GPIO_FUNC_I2C); gpio_pull_up(17);
-    ssd1306_init(display, 128, 64, 0x3C, i2c0);
 }
 
 #include <stdio.h>
@@ -113,31 +120,41 @@ int main()
     gpio_init(PICO_DEFAULT_LED_PIN); // LED on Pico board
     gpio_set_dir(PICO_DEFAULT_LED_PIN, GPIO_OUT);
 
-    ssd1306_t oled;
     oled_init(&oled);
-    char words[20] = "Welcome!";
-    ssd1306_draw_string(&oled, 8, 24, 2, words); ssd1306_show(&oled);
+    ssd1306_clear(&oled); // its impact is visible only after ssd1306_show()
+    ssd1306_draw_string(&oled, 12, 0, 2, "Have fun!");
+    ssd1306_draw_string(&oled, 6, 16, 2, "Breadboard");
+    ssd1306_draw_string(&oled, 12, 33, 2, "Radiation");
+    ssd1306_draw_string(&oled, 20, 49, 2, "Detector");
+    ssd1306_show(&oled);
 
     sd_card_init();
-    if (f_printf(&file, "Hello, world!\n") < 0) sprintf(words, "f_printf failed\n");
-    else sprintf(words, "Data logging started\n");
     ssd1306_clear(&oled);
-    ssd1306_draw_string(&oled, 8, 24, 2, words); ssd1306_show(&oled);
+    if (f_printf(&file, "Hello, world!\n") < 0)
+        ssd1306_draw_string(&oled, 0, 0, 1, "f_printf failed");
+    else
+        ssd1306_draw_string(&oled, 0, 0, 1, "Data logging started");
+    ssd1306_show(&oled);
 
-    for (i=0; i<5000; i++) {
-        if (gpio_get(22) == 0) continue;
+    char words[16];
+    for (i = 0; i < 5000; i++)
+    {
+        if (gpio_get(22) == 0)
+            continue;
         adc_run(false);    // stop ADC temporarily to avoid overwriting waveform
         gpio_put(0, true); // turn on buzzer
         gpio_put(PICO_DEFAULT_LED_PIN, true);
 
         max = 0;
         for (j = 0; j < n; j++)
-            if (waveform[j] > max) max = waveform[j];
+            if (waveform[j] > max)
+                max = waveform[j];
         printf("%hhu\n", max);
 
         sprintf(words, "%hhu\n", max);
         ssd1306_clear(&oled);
-        ssd1306_draw_string(&oled, 8, 24, 2, words); ssd1306_show(&oled);
+        ssd1306_draw_string(&oled, 8, 24, 2, words);
+        ssd1306_show(&oled);
 
         adc_run(true);                         // restart ADC after waveform analysis
         gpio_put(0, false);                    // turn off buzzer
@@ -145,12 +162,15 @@ int main()
     }
 
     FRESULT fr = f_close(&file);
-    if (fr != FR_OK) sprintf(words, "f_close error: %s (%d)\n", FRESULT_str(fr), fr);
+    if (fr != FR_OK)
+        sprintf(words, "f_close error: %s (%d)\n", FRESULT_str(fr), fr);
     ssd1306_clear(&oled);
-    ssd1306_draw_string(&oled, 8, 24, 2, words); ssd1306_show(&oled);
+    ssd1306_draw_string(&oled, 8, 24, 2, words);
+    ssd1306_show(&oled);
     f_unmount(sd_cards[0].pcName);
     ssd1306_clear(&oled);
-    ssd1306_draw_string(&oled, 8, 24, 2, "DAQ stopped"); ssd1306_show(&oled);
+    ssd1306_draw_string(&oled, 8, 24, 2, "DAQ stopped");
+    ssd1306_show(&oled);
 
     return 0;
 }
