@@ -24,7 +24,7 @@ git clone --recurse-submodules --depth 1 https://github.com/jintonic/pico
 [install]: https://datasheets.raspberrypi.com/pico/getting-started-with-pico.pdf
 
 ## Wiring
-Wiring of buzzer, reset button, SD card reader and OLED around a Pi Pico on a bread board:
+Wiring of buzzer, reset button, SD card reader ([SPI](https://electronics.stackexchange.com/a/594276/316245)) and OLED (I2C) around a Pi Pico on a bread board:
 
 <img height="500" alt="wiring of buzzer, reset button, SD card reader and OLED" src="https://github.com/user-attachments/assets/aa8cd64e-2b6f-4b83-a76f-b1f3f276e2c8" />
 <img height="500" alt="Pico with buzzer, reset button, SD card reader and OLED" src="https://github.com/user-attachments/assets/75766d4e-b454-47be-b969-617ea47397db" />
