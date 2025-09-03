@@ -108,10 +108,10 @@ void sd_card_init()
         if (fr != FR_OK || fo.fname[0] == 0)
             break; // error or end of directory
         if (fo.fname[0] == 'r' & fo.fname[1] == 'u' & fo.fname[2] == 'n')
-            i++; // count files named like run*.txt
+            i++; // count files named like run*.csv
     }
     f_closedir(&dir);
-    sprintf(filename, "run%03u.txt", i);
+    sprintf(filename, "run%03u.csv", i);
     f_open(&file, filename, FA_CREATE_NEW | FA_WRITE);
 }
 
@@ -163,7 +163,7 @@ int main()
         sprintf(msg, "%llu, \t %hhu\n", ms, max);
         f_printf(&file, msg);
 
-        if (nevts % 1000 == 0) // update OLED every 100 events
+        if (nevts % 10 == 0) // update OLED every 10 events
         {
             ssd1306_clear(&oled);
             ssd1306_draw_string(&oled, 0, 0, 2, filename);
@@ -178,7 +178,7 @@ int main()
         gpio_put(0, false);                    // turn off buzzer
         gpio_put(PICO_DEFAULT_LED_PIN, false); // turn off LED
         nevts++;
-        if (nevts >= 5000)
+        if (nevts >= 2000)
             break;
     }
     adc_run(false); // stop ADC
