@@ -55,3 +55,6 @@ target_link_libraries(firmware
 
 # create map/bin/hex file etc.
 pico_add_extra_outputs(firmware)
+
+# needed for printf to USB
+pico_enable_stdio_usb(firmware 1)
