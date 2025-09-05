@@ -156,12 +156,15 @@ int main()
         gpio_put(PICO_DEFAULT_LED_PIN, true); // turn on LED
 
         max = 0; // max ADC value in this waveform
-        for (i = 0; i < n; i++)
+        for (i = 0; i < n; i++) {
+            printf("%hhu ", waveform[i]);
             if (waveform[i] > max)
                 max = waveform[i];
+        }
         ms = to_ms_since_boot(get_absolute_time());
         sprintf(msg, "%llu, \t %hhu\n", ms, max);
         f_printf(&file, msg);
+        printf("%hhu\n\n", max);
 
         if (nevts % 10 == 0) // update OLED every 10 events
         {
