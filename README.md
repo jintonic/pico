@@ -26,8 +26,12 @@ git clone --recurse-submodules --depth 1 https://github.com/jintonic/pico
 ## Wiring
 Wiring of buzzer, reset button, SD card reader ([SPI](https://electronics.stackexchange.com/a/594276/316245)) and OLED (I2C) around a Pi Pico on a bread board:
 
-<img height="300" alt="wiring of buzzer, reset button, SD card reader and OLED" src="https://github.com/user-attachments/assets/aa8cd64e-2b6f-4b83-a76f-b1f3f276e2c8" />
-<img height="300" alt="Pico with buzzer, reset button, SD card reader and OLED" src="https://github.com/user-attachments/assets/75766d4e-b454-47be-b969-617ea47397db" />
+<img height="350" alt="wiring of buzzer, reset button, SD card reader and OLED" src="https://github.com/user-attachments/assets/aa8cd64e-2b6f-4b83-a76f-b1f3f276e2c8" />
+<img height="350" alt="Pico with buzzer, reset button, SD card reader and OLED" src="https://github.com/user-attachments/assets/75766d4e-b454-47be-b969-617ea47397db" />
+
+Wiring of power supply, detector, pre-amp and comparator:
+
+<img height="350" alt="wiring of HV, detector, pre-amp and comparator" src="https://github.com/user-attachments/assets/649352ee-714e-409d-bcda-12c593d7c90d" />
 
 ## Firmware Functionality
 
