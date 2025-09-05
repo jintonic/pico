@@ -111,3 +111,8 @@ smpl_ch = dma_claim_unused_channel(true);
 ctrl_ch = dma_claim_unused_channel(true);
 ```
 [DMA]: https://github.com/fandahao17/Raspberry-Pi-DMA-Tutorial
+
+ADC0 (GPIO26) is used to digitize the output of pre-amp.
+
+### Receive Trigger from Comparator
+GPIO28 is used to receive trigger signals from the comparator. If the op-amp, which the comparator is based on, is powered by 3.3 V, the trigger signal is a square pulse of 3.3 V. The width of the pulse is proportional to the width of the signal from the pre-amp. When the voltage recieved by PGIO28 goes up, the Pi Pico will sound the buzzer, light the LED, find the highest sample in the digitized waveform, print the result to the serial port associated with the USB connection, and save the result to the SD card.
