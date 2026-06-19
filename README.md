@@ -1,10 +1,10 @@
 Raspberry Pi Pico firmware for radiation detection. It provides the following functionalities.
 
-* digitize waveforms from a radiation detector
-* blink the LED on Pi Pico board when a waveform is recorded
-* sound an external buzzer when a waveform is recorded
+* digitize waveforms from two radiation detectors
+* blink the LED on Pi Pico board when either detector is triggered
+* sound an external buzzer when either detector is triggered
 * display information on an OLED
-* store data in a micro SD card
+* store pulse heights from both channels + their time stamp in a micro SD card
 
 ## Getting Started
 For most users, simply download `firmware.uf2` from <https://github.com/jintonic/pico/releases>, flash it to Pi Pico, and that's it.
@@ -12,11 +12,11 @@ For most users, simply download `firmware.uf2` from <https://github.com/jintonic
 For those who want to modify the source code, please
 
 1. [install] "Pi Pico C/C++ SDK" through Visual Studio Code and its "Raspberry Pi Pico" extension.
-2. download this repository from <https://github.com/jintonic/pico>
+2. download this repository from <https://github.com/jintonic/pico> using the following code to make sure that its dependent repositories are cloned as well:
 ```sh
 git clone --recurse-submodules --depth 1 https://github.com/jintonic/pico
 ```
-3. go to "Raspberry Pi Pico Project" tab in the left sidebar in VS Code, select "Import Project", and import the downloaded project. Select `Pico` as a Kit if asked. A folder called `.vscode` and a file `pico_sdk_import.cmake` will be created in the source code folder.
+3. go to "Raspberry Pi Pico Project" tab in the left sidebar in VS Code, select "Import Project", and import the downloaded project. Select `Pico` as a Kit if asked. A folder called `.vscode` and a file `pico_sdk_import.cmake` will be created in the source code folder. **NOTE:** currently, the SDCard library doesn't work for Pico 2. It only works for Pico.
 4. modify code as you like.
 5. click "Compile Project" in the sidebar. Select `firmware` if you are asked to `Select a launch target for pico`. If the project compiles, one can find `firmware.uf2` in the `build` sub-folder.
 6. click "Run Project" in the sidebar to flash the uf2 file to Pi Pico, or do it manually.
@@ -32,6 +32,8 @@ Wiring of buzzer, reset button, SD card reader ([SPI](https://electronics.stacke
 Wiring of power supply, detector, pre-amp and comparator:
 
 <img height="350" alt="wiring of HV, detector, pre-amp and comparator" src="https://github.com/user-attachments/assets/649352ee-714e-409d-bcda-12c593d7c90d" />
+
+**NOTE** that this picture is for one detector. If two detectors are used, please connect their trigger signals from their corresponding comparator outputs to GPIO PIN 20 and 21. Since the firmware will record data when either one is triggered, it works for both single and dual detector setup.
 
 ## Firmware Functionality
 
