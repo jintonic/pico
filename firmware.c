@@ -1,6 +1,7 @@
 #include <pico/stdlib.h>
-#define n 16 // FIXME: the code only record 7 or 8 waveform samples currently
-uint8_t waveform[n] = {0}, max, i = 0, smpl_ch, ctrl_ch, comparator = 28;
+#define n 32 // FIXME: the code only record 7 or 8 samples each channel
+uint8_t waveform[n] = {0}, max1, max2, i = 0, smpl_ch, ctrl_ch;
+uint8_t trg1_pin = 20, trg2_pin = 21;
 uint8_t *pointer2wf = &waveform[0];
 
 #include <hardware/adc.h>
@@ -9,7 +10,9 @@ void daq_init() // Waveform digitization using Pi's ADC and DMA
 {
     adc_init();
     adc_gpio_init(26);   // initialize GP26 as ADC input (ADC0)
-    adc_select_input(0); // select ADC0
+    adc_gpio_init(27);   // initialize GP27 as ADC input (ADC1)
+    adc_set_round_robin(0b11); // sample both ADC0 and ADC1
+    adc_select_input(0); // select ADC0 as start
     adc_fifo_setup(
         true,  // Write each completed conversion to the sample FIFO
         true,  // Enable DMA data request (DREQ)
@@ -131,7 +134,8 @@ int main()
     ssd1306_show(&oled);
 
     sd_card_init(); // SD card using DMA and SPI
-    if (f_printf(&file, "# ms, \t height\n") < 0)
+    // f_printf(&file, "# ms, \t height\n") < 0)
+    if (f_printf(&file, "# ms, \t ch1, \t ch2\n") < 0)
         ssd1306_draw_string(&oled, 0, 24, 2, "failed!");
     else
         ssd1306_draw_string(&oled, 0, 24, 2, filename);
@@ -141,30 +145,32 @@ int main()
     adc_run(true);              // start ADC
     dma_channel_start(smpl_ch); // start DMA
 
-    gpio_init(comparator); // trigger signal from comparator
-    gpio_set_dir(comparator, GPIO_IN);
+    gpio_init(trg1_pin); 
+    gpio_set_dir(trg1_pin, GPIO_IN);
+    gpio_init(trg2_pin); 
+    gpio_set_dir(trg2_pin, GPIO_IN);
 
     uint64_t ms;        // time in milliseconds since program start
     uint32_t nevts = 0; // count of recorded events
     while (true)
     {
-        if (gpio_get(comparator) == 0) // if no signal from comparator
+        if (gpio_get(trg1_pin) == 0 && gpio_get(trg2_pin) == 0) // if no signal from either comparator
             continue;                  // check again
 
         adc_run(false);                       // stop to avoid overwriting wf
         gpio_put(0, true);                    // turn on buzzer
         gpio_put(PICO_DEFAULT_LED_PIN, true); // turn on LED
 
-        max = 0; // max ADC value in this waveform
-        for (i = 0; i < n; i++) {
-            printf("%hhu ", waveform[i]);
-            if (waveform[i] > max)
-                max = waveform[i];
+        max1 = 0; // max ADC value in this waveform for ch1
+        max2 = 0; // max ADC value in this waveform for ch2
+        for (i = 0; i < n/2; i++) {
+            if (waveform[i*2] > max1) max1 = waveform[i*2];
+            if (waveform[i*2 + 1] > max2) max2 = waveform[i*2 + 1];
         }
         ms = to_ms_since_boot(get_absolute_time());
-        sprintf(msg, "%llu, \t %hhu\n", ms, max);
+        sprintf(msg, "%llu, \t %hhu, \t %hhu\n", ms, max1, max2);
         f_printf(&file, msg);
-        printf("%hhu\n\n", max);
+        printf("%hhu, %hhu\n\n", max1, max2);
 
         if (nevts % 10 == 0) // update OLED every 10 events
         {
