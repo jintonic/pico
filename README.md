@@ -33,7 +33,7 @@ Wiring of power supply, detector, pre-amp and comparator:
 
 <img height="350" alt="wiring of HV, detector, pre-amp and comparator" src="https://github.com/user-attachments/assets/649352ee-714e-409d-bcda-12c593d7c90d" />
 
-**NOTE** that this picture is for one detector. If two detectors are used, please connect their trigger signals from their corresponding comparator outputs to GPIO PIN 20 and 21. Since the firmware will record data when either one is triggered, it works for both single and dual detector setup.
+**NOTE** that this picture is for one detector. If two detectors are used, please connect their trigger signals from their corresponding comparator outputs to GPIO PIN 20 and 21. Since the firmware will record data when either one is triggered, it works for both single and dual detector setup. In case you want coincidence trigger, connect GPIO PIN 18 to ground.
 
 ## Firmware Functionality
 

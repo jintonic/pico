@@ -1,7 +1,7 @@
 #include <pico/stdlib.h>
 #define n 32 // FIXME: the code only record 7 or 8 samples each channel
 uint8_t waveform[n] = {0}, max1, max2, i = 0, smpl_ch, ctrl_ch;
-uint8_t trg1_pin = 20, trg2_pin = 21;
+uint8_t or_pin = 18, trg1_pin = 20, trg2_pin = 21;
 uint8_t *pointer2wf = &waveform[0];
 
 #include <hardware/adc.h>
@@ -145,17 +145,19 @@ int main()
     adc_run(true);              // start ADC
     dma_channel_start(smpl_ch); // start DMA
 
-    gpio_init(trg1_pin); 
-    gpio_set_dir(trg1_pin, GPIO_IN);
-    gpio_init(trg2_pin); 
-    gpio_set_dir(trg2_pin, GPIO_IN);
+    gpio_init(trg1_pin); gpio_set_dir(trg1_pin, GPIO_IN); // channel 1 trigger
+    gpio_init(trg2_pin); gpio_set_dir(trg2_pin, GPIO_IN); // channel 2 trigger
+    gpio_init(or_pin); gpio_set_dir(or_pin, GPIO_IN); gpio_pull_up(or_pin);
 
     uint64_t ms;        // time in milliseconds since program start
     uint32_t nevts = 0; // count of recorded events
     while (true)
     {
-        if (gpio_get(trg1_pin) == 0 && gpio_get(trg2_pin) == 0) // if no signal from either comparator
-            continue;                  // check again
+        if (gpio_get(or_pin)) { // OR trigger mode when the pin is open
+            if (gpio_get(trg1_pin)==0 && gpio_get(trg2_pin)==0) continue;
+        } else {           // AND trigger mode when the pin is grounded
+            if (gpio_get(trg1_pin)==0 || gpio_get(trg2_pin)==0) continue;
+        }
 
         adc_run(false);                       // stop to avoid overwriting wf
         gpio_put(0, true);                    // turn on buzzer
