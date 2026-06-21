@@ -75,7 +75,7 @@ void oled_update()
     ssd1306_draw_string(&oled, 0, 0, 2, filename);
     sprintf(msg, "%u evts", nevts);
     ssd1306_draw_string(&oled, 0, 24, 2, msg);
-    sprintf(msg, "in %u s", ms / 1000);
+    sprintf(msg, "in %u s", (uint32_t)(ms / 1000));
     ssd1306_draw_string(&oled, 0, 49, 2, msg);
     ssd1306_show(&oled);
 }
@@ -145,11 +145,14 @@ int main()
 {
     stdio_init_all();
 
-    gpio_init(0); // buzzer using GPIO0
-    gpio_set_dir(0, GPIO_OUT);
-
-    gpio_init(PICO_DEFAULT_LED_PIN); // LED on Pico board
+    gpio_init(PICO_DEFAULT_LED_PIN); // LED on board to indicate ch1 trigger 
     gpio_set_dir(PICO_DEFAULT_LED_PIN, GPIO_OUT);
+    gpio_init(led_pin); gpio_set_dir(led_pin, GPIO_OUT); // external LED for ch2
+    gpio_init(0); gpio_set_dir(0, GPIO_OUT); // buzzer
+    gpio_init(time_pin); gpio_set_dir(time_pin, GPIO_IN); gpio_pull_up(time_pin);
+    gpio_init(trg1_pin); gpio_set_dir(trg1_pin, GPIO_IN); // channel 1 trigger
+    gpio_init(trg2_pin); gpio_set_dir(trg2_pin, GPIO_IN); // channel 2 trigger
+    gpio_init(or_pin); gpio_set_dir(or_pin, GPIO_IN); gpio_pull_up(or_pin);
 
     oled_init(&oled);     // OLED display using I2C
     ssd1306_clear(&oled); // its impact is visible only after ssd1306_show()
@@ -167,30 +170,17 @@ int main()
     adc_run(true);              // start ADC
     dma_channel_start(smpl_ch); // start DMA
 
-uint8_t led2_pin = 19; // GP19 for Channel 2 trigger indicator
+    while (true) { // event loop
+        if (gpio_get(or_pin)) { // OR trigger mode when the pin is open
+            if (gpio_get(trg1_pin)==0 && gpio_get(trg2_pin)==0) continue;
+        } else {           // AND trigger mode when the pin is grounded
+            if (gpio_get(trg1_pin)==0 || gpio_get(trg2_pin)==0) continue;
+        }
 
-// In main() initialization:
-    gpio_init(led2_pin);
-    gpio_set_dir(led2_pin, GPIO_OUT);
-// (PICO_DEFAULT_LED_PIN is already initialized)
-
-// In the while loop, inside the trigger logic:
-    bool t1 = gpio_get(trg1_pin);
-    bool t2 = gpio_get(trg2_pin);
-    
-    // Update LEDs
-    gpio_put(PICO_DEFAULT_LED_PIN, t1); // Channel 1 indicator
-    gpio_put(led2_pin, t2);             // Channel 2 indicator
-
-    // Trigger condition (t1, t2 already fetched)
-    bool trigger = false;
-    if (gpio_get(or_pin)) {
-        trigger = (t1 || t2);
-    } else {
-        trigger = (t1 && t2);
-    }
-    
-    if (!trigger) continue;
+        adc_run(false);    // stop to avoid overwriting wf
+        gpio_put(0, true); // turn on buzzer
+        if (gpio_get(trg1_pin)) gpio_put(PICO_DEFAULT_LED_PIN, true); // ch1 LED on
+        if (gpio_get(trg2_pin)) gpio_put(led_pin, true); // ch2 LED on
 
         max1 = 0; // max ADC value in this waveform for ch1
         max2 = 0; // max ADC value in this waveform for ch2
@@ -213,7 +203,8 @@ uint8_t led2_pin = 19; // GP19 for Channel 2 trigger indicator
         }
 
         gpio_put(0, false);                    // turn off buzzer
-        gpio_put(PICO_DEFAULT_LED_PIN, false); // turn off LED
+        gpio_put(PICO_DEFAULT_LED_PIN, false); // turn off LED for ch1
+        gpio_put(led_pin, false);              // turn off LED for ch2
         nevts++; if (nevts>=2000) break;       // stop after 2000 events
         adc_run(true);                         // restart after wf analysis
     }
