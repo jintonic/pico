@@ -1,16 +1,17 @@
 Raspberry Pi Pico firmware for radiation detection. It provides the following functionalities.
 
-* digitize waveforms from two radiation detectors
-* blink the LED on Pi Pico board when either detector is triggered
-* sound an external buzzer when either detector is triggered
+* digitize waveforms from up to two radiation detectors
+* blink the LED on board when detector 1 is triggered, blink the external one when detector 2 is triggered
+* sound an external buzzer when a global trigger is received
 * display information on an OLED
-* store pulse heights from both channels + their time stamp in a micro SD card
+* store pulse heights from both channels + their time stamp in a micro SD card (2000 events per run)
 
 ## Getting Started
 For most users, simply download `firmware.uf2` from <https://github.com/jintonic/pico/releases>, flash it to Pi Pico, and that's it.
 
 For those who want to modify the source code, please
 
+0. make sure there is a C++ compiler in the system (VS Studio with C++ extension on Windows, XCode command-line tools on Mac)
 1. [install] "Pi Pico C/C++ SDK" through Visual Studio Code and its "Raspberry Pi Pico" extension.
 2. download this repository from <https://github.com/jintonic/pico> using the following code to make sure that its dependent repositories are cloned as well:
 ```sh
@@ -54,6 +55,8 @@ gpio_put(PICO_DEFAULT_LED_PIN, true);         // turn on LED
 gpio_put(PICO_DEFAULT_LED_PIN, false);        // turn off LED
 ```
 
+The LED on board is dedicated to detector 1. In case there is another detector, connect an LED to GPIO PIN 2 to indicate channel 2 trigger.
+
 ### Drive an External Buzzer
 
 ```c
@@ -77,7 +80,7 @@ git config -f .gitmodules submodule.SDCard.shallow true
 git commit -am 'added SD card lib'
 ```
 
-A search of files named `run{nnn}.txt` in the SD card is made when the Pi Pico is powered/reset. A new file `run{nnn+1}.txt` is created to avoid overwriting old data. The program stops when 5,000 events are recorded in the file. Push the reset button to start a new run.
+A search of files named `run{nnn}.txt` in the SD card is made when the Pi Pico is powered/reset. A new file `run{nnn+1}.txt` is created to avoid overwriting old data. The program stops when 2,000 events are recorded in the file. Push the reset button to start a new run.
 
 The SD card [adapter] utilizes [SPI] to communicate with Pi Pico.
 
@@ -118,7 +121,10 @@ ctrl_ch = dma_claim_unused_channel(true);
 ```
 [DMA]: https://github.com/fandahao17/Raspberry-Pi-DMA-Tutorial
 
-ADC0 (GPIO26) is used to digitize the output of pre-amp.
+ADC0 (GPIO26) is used to digitize the output of detector 1; ADC1 (GPIO27) is used for detector 2.
 
 ### Receive Trigger from Comparator
-GPIO28 is used to receive trigger signals from the comparator. If the op-amp, which the comparator is based on, is powered by 3.3 V, the trigger signal is a square pulse of 3.3 V. The width of the pulse is proportional to the width of the signal from the pre-amp. When the voltage recieved by PGIO28 goes up, the Pi Pico will sound the buzzer, light the LED, find the highest sample in the digitized waveform, print the result to the serial port associated with the USB connection, and save the result to the SD card.
+GPIO28 is used to receive trigger signals from comparator 1; GPIO29 is for comparator 2. If the comparator is powered by 3.3 V, the trigger signal is a square pulse of 3.3 V. The width of the pulse is proportional to the width of the signal from the pre-amp. When the voltage received by GPIO28 or 29 goes above 2 V, the Pi Pico will sound the buzzer, light the LEDs, find the highest sample in the digitized waveforms, print the result to the serial port associated with the USB connection, and save the result to the SD card.
+
+### Handle High-Rate Data-Taking
+By default, the firmware writes to the SD card after each event. When the trigger rate is high, connect GPIO PIN 2 to the ground to enable the SD card writing and OLED refreshing every 5 seconds instead of every events.
