@@ -1,8 +1,16 @@
 #include <pico/stdlib.h>
 #define n 32 // FIXME: the code only record 7 or 8 samples each channel
-uint8_t waveform[n] = {0}, max1, max2, i = 0, smpl_ch, ctrl_ch;
-uint8_t or_pin = 18, trg1_pin = 20, trg2_pin = 21;
+uint8_t waveform[n]={0}, max1, max2, i=0, smpl_ch, ctrl_ch;
+uint8_t time_pin=2, led_pin=5, or_pin=18, trg1_pin=20, trg2_pin=21;
 uint8_t *pointer2wf = &waveform[0];
+typedef struct {
+    uint64_t ms; // time in milliseconds since program start
+    uint8_t max1; // max ADC value in this waveform for ch1
+    uint8_t max2; // max ADC value in this waveform for ch2
+} Event;
+Event events[2500]; // buffer in RAM that can hold >2000 events
+uint32_t nevts = 0, nevts_in_RAM = 0; // numbers of events in total & in RAM
+uint64_t ms, last_sync_time = 0; // run & last sync time in milliseconds
 
 #include <hardware/adc.h>
 #include <hardware/dma.h>
@@ -54,12 +62,22 @@ ssd1306_t oled; // OLED display
 void oled_init()
 {
     i2c_init(i2c0, 400000);
-    gpio_set_function(16, GPIO_FUNC_I2C);
-    gpio_pull_up(16);
-    gpio_set_function(17, GPIO_FUNC_I2C);
-    gpio_pull_up(17);
+    gpio_set_function(16, GPIO_FUNC_I2C); gpio_pull_up(16);
+    gpio_set_function(17, GPIO_FUNC_I2C); gpio_pull_up(17);
     oled.external_vcc = false;                // despite OLED is powered by Pico
     ssd1306_init(&oled, 128, 64, 0x3C, i2c0); // must be after previous line
+}
+#include <stdio.h>  // provide sprintf()
+char filename[12], msg[100];
+void oled_update()
+{
+    ssd1306_clear(&oled);
+    ssd1306_draw_string(&oled, 0, 0, 2, filename);
+    sprintf(msg, "%u evts", nevts);
+    ssd1306_draw_string(&oled, 0, 24, 2, msg);
+    sprintf(msg, "in %u s", ms / 1000);
+    ssd1306_draw_string(&oled, 0, 49, 2, msg);
+    ssd1306_show(&oled);
 }
 
 #include <hw_config.h> // declaring spi_t, sd_card_t & the following 4 functions
@@ -79,27 +97,21 @@ static sd_card_t sd_cards[] = {{
 size_t sd_get_num() { return count_of(sd_cards); }
 sd_card_t *sd_get_by_num(size_t num)
 {
-    if (num <= sd_get_num())
-        return &sd_cards[num];
-    else
-        return NULL;
+    if (num <= sd_get_num()) return &sd_cards[num];
+    else return NULL;
 }
 size_t spi_get_num() { return count_of(spis); }
 spi_t *spi_get_by_num(size_t num)
 {
-    if (num <= sd_get_num())
-        return &spis[num];
-    else
-        return NULL;
+    if (num <= sd_get_num()) return &spis[num];
+    else return NULL;
 }
 
 #include <rtc.h>    // provide time_init()
-#include <stdio.h>  // provide sprintf()
 #include <f_util.h> // provide f_...()
 FIL file;           // file object
 DIR dir;            // directory object
 FILINFO fo;         // file information object
-char filename[12], msg[100];
 void sd_card_init()
 {
     time_init();
@@ -116,6 +128,17 @@ void sd_card_init()
     f_closedir(&dir);
     sprintf(filename, "run%03u.csv", i);
     f_open(&file, filename, FA_CREATE_NEW | FA_WRITE);
+}
+UINT bw; // number of bytes written by f_write() in each call
+void sd_card_save()
+{
+    for (i=0; i<nevts_in_RAM; i++) {
+        int len = sprintf(msg, "%llu, \t %hhu, \t %hhu\n", 
+                          events[i].ms, events[i].max1, events[i].max2);
+        f_write(&file, msg, len, &bw);
+    }
+    f_sync(&file);
+    nevts_in_RAM = 0;
 }
 
 int main()
@@ -134,7 +157,6 @@ int main()
     ssd1306_show(&oled);
 
     sd_card_init(); // SD card using DMA and SPI
-    // f_printf(&file, "# ms, \t height\n") < 0)
     if (f_printf(&file, "# ms, \t ch1, \t ch2\n") < 0)
         ssd1306_draw_string(&oled, 0, 24, 2, "failed!");
     else
@@ -145,23 +167,30 @@ int main()
     adc_run(true);              // start ADC
     dma_channel_start(smpl_ch); // start DMA
 
-    gpio_init(trg1_pin); gpio_set_dir(trg1_pin, GPIO_IN); // channel 1 trigger
-    gpio_init(trg2_pin); gpio_set_dir(trg2_pin, GPIO_IN); // channel 2 trigger
-    gpio_init(or_pin); gpio_set_dir(or_pin, GPIO_IN); gpio_pull_up(or_pin);
+uint8_t led2_pin = 19; // GP19 for Channel 2 trigger indicator
 
-    uint64_t ms;        // time in milliseconds since program start
-    uint32_t nevts = 0; // count of recorded events
-    while (true)
-    {
-        if (gpio_get(or_pin)) { // OR trigger mode when the pin is open
-            if (gpio_get(trg1_pin)==0 && gpio_get(trg2_pin)==0) continue;
-        } else {           // AND trigger mode when the pin is grounded
-            if (gpio_get(trg1_pin)==0 || gpio_get(trg2_pin)==0) continue;
-        }
+// In main() initialization:
+    gpio_init(led2_pin);
+    gpio_set_dir(led2_pin, GPIO_OUT);
+// (PICO_DEFAULT_LED_PIN is already initialized)
 
-        adc_run(false);                       // stop to avoid overwriting wf
-        gpio_put(0, true);                    // turn on buzzer
-        gpio_put(PICO_DEFAULT_LED_PIN, true); // turn on LED
+// In the while loop, inside the trigger logic:
+    bool t1 = gpio_get(trg1_pin);
+    bool t2 = gpio_get(trg2_pin);
+    
+    // Update LEDs
+    gpio_put(PICO_DEFAULT_LED_PIN, t1); // Channel 1 indicator
+    gpio_put(led2_pin, t2);             // Channel 2 indicator
+
+    // Trigger condition (t1, t2 already fetched)
+    bool trigger = false;
+    if (gpio_get(or_pin)) {
+        trigger = (t1 || t2);
+    } else {
+        trigger = (t1 && t2);
+    }
+    
+    if (!trigger) continue;
 
         max1 = 0; // max ADC value in this waveform for ch1
         max2 = 0; // max ADC value in this waveform for ch2
@@ -170,39 +199,27 @@ int main()
             if (waveform[i*2 + 1] > max2) max2 = waveform[i*2 + 1];
         }
         ms = to_ms_since_boot(get_absolute_time());
-        sprintf(msg, "%llu, \t %hhu, \t %hhu\n", ms, max1, max2);
-        f_printf(&file, msg);
-        printf("%hhu, %hhu\n\n", max1, max2);
 
-        if (nevts % 10 == 0) // update OLED every 10 events
-        {
-            ssd1306_clear(&oled);
-            ssd1306_draw_string(&oled, 0, 0, 2, filename);
-            sprintf(msg, "%u evts", nevts + 1);
-            ssd1306_draw_string(&oled, 0, 24, 2, msg);
-            sprintf(msg, "in %u s", ms / 1000);
-            ssd1306_draw_string(&oled, 0, 49, 2, msg);
-            ssd1306_show(&oled);
+        if (gpio_get(time_pin)==1) { // save event to RAM when the pin is open
+            if (nevts_in_RAM<2500) events[nevts_in_RAM++] = (Event){ms, max1, max2};
+            if (ms-last_sync_time>=5000) { // sync to SD card every 5s
+                sd_card_save(); oled_update();
+                last_sync_time = ms;
+            }
+        } else { // save event to SD card immediately when the pin is grounded
+            int len = sprintf(msg, "%llu, \t %hhu, \t %hhu\n", ms, max1, max2);
+            f_write(&file, msg, len, &bw);
+            f_sync(&file);
         }
 
-        adc_run(true);                         // restart after wf analysis
         gpio_put(0, false);                    // turn off buzzer
         gpio_put(PICO_DEFAULT_LED_PIN, false); // turn off LED
-        nevts++;
-        if (nevts >= 2000)
-            break;
+        nevts++; if (nevts>=2000) break;       // stop after 2000 events
+        adc_run(true);                         // restart after wf analysis
     }
-    adc_run(false); // stop ADC
+
     f_close(&file);
     f_unmount(sd_cards[0].pcName);
-
-    ssd1306_clear(&oled);
-    sprintf(msg, "%d events", nevts);
-    ssd1306_draw_string(&oled, 0, 0, 2, msg);
-    ssd1306_draw_string(&oled, 0, 24, 2, filename);
-    sprintf(msg, "%.2f Hz", (float)nevts / ms * 1000);
-    ssd1306_draw_string(&oled, 0, 49, 2, msg);
-    ssd1306_show(&oled);
-
+    oled_update();
     return 0;
 }
